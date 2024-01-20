@@ -1,0 +1,156 @@
+version: "3.4"
+
+services:
+  overseerr:
+    image: sctx/overseerr:latest
+    container_name: overseerr
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=${TZ}
+      - PORT=5055 #optional
+    ports:
+      - 5055:5055
+    volumes:
+      - ${ROOT}/config/overseer:/config
+    restart: unless-stopped
+
+  qbittorrentvpn:
+    privileged: true
+    container_name: qbittorrentvpn
+    image: dyonr/qbittorrentvpn:latest
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - VPN_ENABLED=yes
+      - VPN_TYPE=openvpn
+      - LAN_NETWORK=192.168.1.105/24
+      - VPN_USERNAME=${VPN_USERNAME}
+      - VPN_PASSWORD=${VPN_PASSWORD}
+      - RESTART_CONTAINERS=yes
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8080:8080
+    volumes:
+      - ${ROOT}\config\qBittorrent:/config
+      - ${ROOT}\downloads:/downloads
+
+  plex-server:
+    container_name: plex-server
+    #image: plexinc/pms-docker:latest
+    image: lscr.io/linuxserver/plex:latest
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ} # timezone, defined in .env
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:plex
+      - TP_THEME=organizr
+    #network_mode: host
+    ports:
+      - "32400:32400/tcp"
+      - "8324:8324/tcp"
+      - "32469:32469/tcp"
+      - "1900:1900/udp"
+      - "32410:32410/udp"
+      - "32412:32412/udp"
+      - "32413:32413/udp"
+      - "32414:32414/udp"
+    hostname: plex
+    volumes:
+      - ${ROOT}\config\plex\db:/config # plex database
+      - ${ROOT}\config\plex\transcode:/transcode # temp transcoded files
+      - ${ROOT}\complete:/data # media library
+
+  jackett:
+    container_name: jackett
+    image: linuxserver/jackett:latest
+    restart: unless-stopped
+    #network_mode: host
+    ports:
+      - 9117:9117
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:plex
+      - TP_THEME=organizr
+    volumes:
+      #- /etc/localtime:/etc/localtime:ro
+      - ${ROOT}\downloads\torrent-blackhole:/downloads # place where to put .torrent files for manual download
+      - ${ROOT}\config\jackett:/config # config files
+
+  sonarr:
+    privileged: true
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    restart: unless-stopped
+    #network_mode: host
+    ports:
+      - 8989:8989
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:plex
+      - TP_THEME=organizr
+    volumes:
+      #- /etc/localtime:/etc/localtime:ro
+      - ${ROOT}\config\sonarr:/config # config files
+      - ${ROOT}\complete\tv:/tv # tv shows folder
+      - ${ROOT}\downloads:/downloads # download folder
+
+  radarr:
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    restart: unless-stopped
+    #network_mode: host
+    ports:
+      - 7878:7878
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:plex
+      - TP_THEME=organizr
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}\config\radarr:/config # config files
+      - ${ROOT}\complete\movies:/movies # movies folder
+      - ${ROOT}\downloads:/downloads # download folder
+
+  bazarr:
+    container_name: bazarr
+    image: linuxserver/bazarr
+    restart: unless-stopped
+    #network_mode: host
+    ports:
+      - 6767:6767
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      #- UMASK_SET=022 #optional
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:plex
+      - TP_THEME=organizr
+    volumes:
+      - ${ROOT}/config/bazarr:/config # config files
+      - ${ROOT}/complete/movies:/movies # movies folder
+      - ${ROOT}/complete/tv:/tv # tv shows folder
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:plex
+      - TP_THEME=organizr
+    volumes:
+      - ${ROOT}/config/lidarr:/config # config files
+      - ${ROOT}/complete/music:/music # music folder
+      - ${ROOT}/downloads/complete:/downloads # downloads folder
+    ports:
+      - 8686:8686
+    restart: unless-stopped
